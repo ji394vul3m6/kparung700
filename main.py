@@ -1,5 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
+from multiprocessing import Process
 
 def getInfo(session, date):
   url = "http://www.kparung700.com/camp/campOrder.php?date={}&campying_id=#info".format(date)
@@ -25,16 +26,22 @@ def order(date, maxNum = 8):
   tpl, availables = getInfo(s, date)
   ok = 0
   availables.reverse()
+  processes = []
   for available in availables:
     onchange = [x.strip("')") for x in available.find('select').attrs['onchange'].split(',')]
     id = onchange[1]
     useno = onchange[2]
     d = onchange[3]
     order_day_num= onchange[7]
-    addArea(s, id, useno, d, order_day_num)
+    p = Process(target=addArea, args=[s, id, useno, d, order_day_num])
+    p.start()
+    processes.append(p)
+    # addArea(s, id, useno, d, order_day_num)
     ok += 1
     if ok >= maxNum:
       break
+  for p in processes:
+    p.join()
 
   headers = {'Content-Type': 'application/x-www-form-urlencoded'}
   request_body = {
@@ -49,5 +56,5 @@ def order(date, maxNum = 8):
   response = s.post("http://www.kparung700.com/camp/pro_edit.php", request_body, headers)
   content = response.content.decode('utf-8')
   print(content)
-
-order('2023-12-18', 2)
+if __name__ == '__main__':
+  order('2023-12-18', 2)
